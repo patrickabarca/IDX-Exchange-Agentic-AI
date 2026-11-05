@@ -1,60 +1,103 @@
 import "dotenv/config";
 import mysql from "mysql2/promise";
+import { query as dbQuery } from "./db.js";
 import { parsePropertyQuery } from "./parser.js";
 
-const query = process.argv.slice(2).join(" ");
 
-async function main() {
-  if (!query) throw new Error("Provide a property search query.");
-
-  const filters = await parsePropertyQuery(query);
-
-  const conditions: string[] = [];
-  const values: (string | number)[] = [];
-
-  function add(column: string, operator: string, value: string | number | null) {
-    if (value === null) return;
-    conditions.push(`${column} ${operator} ?`);
-    values.push(value);
-  }
-
-  add("L_City", "=", filters.city);
-  add("L_SystemPrice", "<=", filters.maxPrice);
-  add("L_Keyword2", ">=", filters.beds);
-  add("LM_Dec_3", ">=", filters.baths);
-  add("LM_Int2_3", ">=", filters.sqft);
-  add("L_Type_", "=", filters.type);
-  add("PoolPrivateYN", "=", filters.pool);
-  add("ViewYN", "=", filters.hasView);
-
-  const db = await mysql.createConnection({
-    host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DATABASE
-  });
-
-  try {
-    const where = conditions.length
-      ? `WHERE ${conditions.join(" AND ")}`
-      : "";
-
-    const sql = `
-      SELECT L_City, L_SystemPrice, L_Keyword2,
-             LM_Dec_3, LM_Int2_3, L_Type_
-      FROM rets_property
-      ${where}
-      LIMIT 10
+export async function searchActiveListings(filters: PropertyFilters, page = 1,
+  limit = 10) {
+  const offset = (page - 1) * limit;
+  let sql = `
+    SELECT
+      L_ListingID, L_DisplayId, L_Address, L_City, L_Zip,
+      L_SystemPrice AS price, L_Keyword2 AS beds, LM_Dec_3 AS baths,
+      LM_Int2_3 AS sqft, L_Type_ AS type, L_Status AS status,
+      LMD_MP_Latitude AS lat, LMD_MP_Longitude AS lng,
+      YearBuilt, AssociationFee, DaysOnMarket,
+      PoolPrivateYN, ViewYN, FireplaceYN, PhotoCount,
+      LA1_UserFirstName, LA1_UserLastName, LO1_OrganizationName
+      FROM rets_property WHERE L_Status = "Active"
     `;
+    const params: any[] = [];
+    
+    if (filters.city) { sql += " AND L_City = ?";
+      params.push(filters.city); }
+    if (filters.maxPrice) { sql += " AND L_SystemPrice <= ?";
+      params.push(filters.maxPrice); }
+    if (filters.beds) { sql += " AND L_Keyword2 >= ?";
+      params.push(filters.beds); }
+    if (filters.baths) { sql += " AND LM_Dec_3 >= ?";
+      params.push(filters.baths); }
 
-    const [rows] = await db.execute(sql, values);
-    console.log(JSON.stringify({ filters, listings: rows }, null, 2));
-  } finally {
-    await db.end();
-  }
+    if (filters.sqft) { sql += " AND LM_Int2_3 >= ?";
+      params.push(filters.sqft); }
+    if (filters.type) { sql += " AND L_Type_ = ?";
+      params.push(filters.type); }
+    if (filters.pool) { sql += " AND PoolPrivateYN = ?";
+      params.push(filters.pool); }
+    if (filters.hasView) { sql += " AND ViewYN = ?";
+      params.push(filters.hasView); }
+
+      sql += " ORDER BY L_SystemPrice ASC LIMIT ? OFFSET ?";
+      params.push(limit, offset);
+
+      return dbQuery<ListingRow>(sql, params);
+    }
+
+export async function getSoldComps(city: string, months = 12) {
+  const sql = `
+    SELECT
+      ListingKey, UnparsedAddress, City, CloseDate, ClosePrice,
+      OriginalListPrice, ListPrice, DaysOnMarket,
+      BedroomsTotal, BathroomsTotalInteger, LivingArea,
+      PropertyType, PropertySubType, YearBuilt,
+      ListAgentFullName, ListOfficeName, BuyerOfficeName
+    FROM california_sold
+    WHERE City = ?
+      AND CloseDate >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+      AND PropertyType = "Residential"
+    ORDER BY CloseDate DESC
+    LIMIT 50
+    `;
+    return dbQuery<SoldRow>(sql, [city, months]);
 }
 
-main().catch(err => {
-  console.error(err.message);
-  process.exitCode = 1;
-});
+interface ListingRow {
+  L_City: string;
+  L_SystemPrice: number;
+  L_Keyword2: number;
+  LM_Dec_3: number;
+  LM_Int2_3: number;
+  L_Type_: string;
+}
+
+interface PropertyFilters {
+  city: string | null;
+  maxPrice: number | null;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
+  type: string | null;
+  pool: string | null;
+  hasView: string | null;
+    }
+
+interface SoldRow {
+      ListingKey: string;
+      UnparsedAddress: string | null;
+      City: string | null;
+      CloseDate: Date | string | null;
+      ClosePrice: number | null;
+      OriginalListPrice: number | null;
+      ListPrice: number | null;
+      DaysOnMarket: number | null;
+      BedroomsTotal: number | null;
+      BathroomsTotalInteger: number | null;
+      LivingArea: number | null;
+      PropertyType: string | null;
+      PropertySubType: string | null;
+      YearBuilt: number | null;
+      ListAgentFullName: string | null;
+      ListOfficeName: string | null;
+      BuyerOfficeName: string | null;
+    }

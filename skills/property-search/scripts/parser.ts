@@ -1,4 +1,3 @@
-import process from "node:process";
 export async function parsePropertyQuery(query: string) {
     const cityMatch = query.match(/in ([A-Za-z\s]+?)(?:\s+under|\s+with|\s+at|$)/i);
     const priceMatch = query.match(/under \$?([\d,.]+)(k|m)?/i);
@@ -7,20 +6,17 @@ export async function parsePropertyQuery(query: string) {
     const sqftMatch = query.match(/(\d+)[\s,]*(sqft|sq ft|square feet)/i);
     const poolMatch = /pool/i.test(query);
     const viewMatch = /view/i.test(query);
-
     const typeMap: Record<string,string> = {
         condo: "Condominium", townhome: "Townhouse",
         "single family": "SingleFamilyResidence", land: "UnimprovedLand"
     };
-    const typeKey = Object.keys(typeMap).find(k =>
-query.toLowerCase().includes(k));
-
+    const typeKey = Object.keys(typeMap).find(k => query.toLowerCase().includes(k));
     let maxPrice = null;
     if (priceMatch) {
         maxPrice = Number(priceMatch[1].replace(/,/g, ""));
         if (priceMatch[2]?.toLowerCase() === "k") maxPrice *= 1000;
         if (priceMatch[2]?.toLowerCase() === "m") maxPrice *= 1_000_000;
-    }
+}
     return {
         city: cityMatch?.[1]?.trim() || null,
         maxPrice,
@@ -31,5 +27,4 @@ query.toLowerCase().includes(k));
         pool: poolMatch ? "True" : null,
         hasView: viewMatch ? "True" : null,
         };
-    }
-    
+    } 

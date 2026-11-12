@@ -41,6 +41,8 @@ export async function searchActiveListings(filters: PropertyFilters, page = 1,
       sql += " ORDER BY L_SystemPrice ASC LIMIT ? OFFSET ?";
       params.push(limit, offset);
 
+      console.error("SQL:", sql);
+      console.error("Params:", params);
       return dbQuery<ListingRow>(sql, params);
     }
 
@@ -62,7 +64,7 @@ export async function getSoldComps(city: string, months = 12) {
     return dbQuery<SoldRow>(sql, [city, months]);
 }
 
-interface ListingRow {
+export interface ListingRow {
   L_City: string;
   L_SystemPrice: number;
   L_Keyword2: number;
@@ -71,7 +73,7 @@ interface ListingRow {
   L_Type_: string;
 }
 
-interface PropertyFilters {
+export interface PropertyFilters {
   city: string | null;
   maxPrice: number | null;
   beds: number | null;

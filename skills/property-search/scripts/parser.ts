@@ -1,6 +1,6 @@
 export async function parsePropertyQuery(query: string) {
     const cityMatch = query.match(/in ([A-Za-z\s]+?)(?:\s+under|\s+with|\s+at|$)/i);
-    const priceMatch = query.match(/under \$?([\d,.]+)(k|m)?/i);
+    const priceMatch = query.match(/under\s+\$?([\d,.]+)\s*(million|thousand|k|m)?\b/i);
     const bedsMatch = query.match(/(\d+)[\s-]*(bed|beds|bedroom|bedrooms)/i);
     const bathsMatch = query.match(/(\d+(?:\.5)?)[\s-]*(bath|baths|bathroom)/i);
     const sqftMatch = query.match(/(\d+)[\s,]*(sqft|sq ft|square feet)/i);
@@ -14,8 +14,12 @@ export async function parsePropertyQuery(query: string) {
     let maxPrice = null;
     if (priceMatch) {
         maxPrice = Number(priceMatch[1].replace(/,/g, ""));
-        if (priceMatch[2]?.toLowerCase() === "k") maxPrice *= 1000;
-        if (priceMatch[2]?.toLowerCase() === "m") maxPrice *= 1_000_000;
+        if (["k", "thousand"].includes(priceMatch[2]?.toLowerCase() ?? "")) {
+            maxPrice *= 1000;
+        }
+        if (["million", "m"].includes(priceMatch[2]?.toLowerCase() ?? "")) {
+            maxPrice *= 1_000_000;
+        }
 }
     return {
         city: cityMatch?.[1]?.trim() || null,

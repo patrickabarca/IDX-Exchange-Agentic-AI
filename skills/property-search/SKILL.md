@@ -2,17 +2,14 @@
 name: property-search
 description: Search the local IDX MySQL property database. Use for ALL real estate listing requests, including WhatsApp messages.
 ---
+# Instructions
 
-# Property Search
-
-When a user asks to find properties:
-
-1. Use this skill whenever the user requests a property search.
-2. Run:
-   pnpm --dir {baseDir} exec tsx scripts/search.ts "USER_QUERY"
-3. Replace USER_QUERY with the user's actual request.
-4. Parse the returned JSON and display matching properties.
-5. Never invent listings or property details.
-6. Do not use browsers or external listing websites as substitutes.
-7. If no matches are found, inform the user.
-8. If the command fails, report the error...
+1. Use this skill for active property listings and recently sold properties.
+2. Use OpenClaw's shell execution tool to run the existing TypeScript script.
+3. Execute from the skill directory:
+   pnpm exec tsx scripts/run.ts "USER_QUERY"
+4. Replace USER_QUERY with the user's actual property search request.
+5. Do not import or execute run.ts, search.ts, or db.ts inside an inline JavaScript execution environment.
+6. Read the JSON returned by the script and display the matching properties.
+7. Never invent listings or substitute web searches for database results.
+8. If shell execution is unavailable or fails, report the actual error.
